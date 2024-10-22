@@ -33,8 +33,7 @@ export const calculateCartTotal = (
     const { price } = item.product;
     const { quantity } = item;
     totalBeforeDiscount += price * quantity;
-    const itemTotalAfterDiscount = calculateItemTotal(item);
-    totalAfterDiscount += itemTotalAfterDiscount;
+    totalAfterDiscount += calculateItemTotal(item);
   });
 
   let totalDiscount = totalBeforeDiscount - totalAfterDiscount;
