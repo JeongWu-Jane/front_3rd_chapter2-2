@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Product, Discount } from '../../../types';
+import { useForm } from '../../hooks/useForm';
 
 interface Props {
   products: Product[];
@@ -22,13 +23,22 @@ export const ProductManager = ({
     rate: 0,
   });
 
-  const [newProduct, setNewProduct] = useState<Omit<Product, 'id'>>({
+  const initialProduct: Omit<Product, 'id'> = {
     name: '',
     price: 0,
     stock: 0,
     discounts: [],
-  });
+  };
 
+  const { formData, resetData, setData } =
+    useForm<Omit<Product, 'id'>>(initialProduct);
+  const newProduct = formData;
+  const resetProductInfo = resetData;
+  const setProductInfo = setData;
+
+  const handleChange = (key: string, value: any) => {
+    setProductInfo(key, value);
+  };
   const toggleProductAccordion = (productId: string) => {
     setOpenProductIds((prev) => {
       const newSet = new Set(prev);
@@ -107,12 +117,7 @@ export const ProductManager = ({
   const handleAddNewProduct = () => {
     const productWithId = { ...newProduct, id: Date.now().toString() };
     onProductAdd(productWithId);
-    setNewProduct({
-      name: '',
-      price: 0,
-      stock: 0,
-      discounts: [],
-    });
+    resetProductInfo();
     setShowNewProductForm(false);
   };
   return (
@@ -138,9 +143,7 @@ export const ProductManager = ({
               id="productName"
               type="text"
               value={newProduct.name}
-              onChange={(e) =>
-                setNewProduct({ ...newProduct, name: e.target.value })
-              }
+              onChange={(e) => handleChange('name', e.target.value)}
               className="w-full p-2 border rounded"
             />
           </div>
@@ -155,12 +158,7 @@ export const ProductManager = ({
               id="productPrice"
               type="number"
               value={newProduct.price}
-              onChange={(e) =>
-                setNewProduct({
-                  ...newProduct,
-                  price: parseInt(e.target.value),
-                })
-              }
+              onChange={(e) => handleChange('price', e.target.value)}
               className="w-full p-2 border rounded"
             />
           </div>
@@ -175,12 +173,7 @@ export const ProductManager = ({
               id="productStock"
               type="number"
               value={newProduct.stock}
-              onChange={(e) =>
-                setNewProduct({
-                  ...newProduct,
-                  stock: parseInt(e.target.value),
-                })
-              }
+              onChange={(e) => handleChange('stock', e.target.value)}
               className="w-full p-2 border rounded"
             />
           </div>
