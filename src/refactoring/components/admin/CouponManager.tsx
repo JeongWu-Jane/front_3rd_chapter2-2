@@ -1,5 +1,6 @@
 import { Coupon } from '../../../types';
-import { useForm } from '../../hooks/useForm';
+import { initialCoupon } from '../../const/initialState';
+import { useCouponForm } from '../../hooks/useCouponForm';
 
 interface Props {
   coupons: Coupon[];
@@ -7,24 +8,16 @@ interface Props {
 }
 
 export const CouponManager = ({ coupons, onCouponAdd }: Props) => {
-  const initialCoupon: Coupon = {
-    name: '',
-    code: '',
-    discountType: 'percentage',
-    discountValue: 0,
-  };
-  const { formData, resetData, setData } = useForm<Coupon>(initialCoupon);
-  const newCoupon = formData;
-  const resetCouponInfo = resetData;
-  const setCouponInfo = setData;
+  const { newCoupon, resetCouponForm, setCouponForm } =
+    useCouponForm(initialCoupon);
 
   const handleAddCoupon = () => {
     onCouponAdd(newCoupon);
-    resetCouponInfo();
+    resetCouponForm();
   };
 
   const handleChange = (key: string, value: any) => {
-    setCouponInfo(key, value);
+    setCouponForm(key, value);
   };
 
   return (

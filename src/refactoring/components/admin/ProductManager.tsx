@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Product, Discount } from '../../../types';
-import { useForm } from '../../hooks/useForm';
+import { initialDiscount, initialProduct } from '../../const/initialState';
+import { useAccordion } from '../../hooks/useAccordion';
+import { useProductForm } from '../../hooks/useProductForm';
 
 interface Props {
   products: Product[];
@@ -13,42 +15,18 @@ export const ProductManager = ({
   onProductUpdate,
   onProductAdd,
 }: Props) => {
-  const [openProductIds, setOpenProductIds] = useState<Set<string>>(new Set());
+  const { openProductIds, toggleProductAccordion } = useAccordion();
 
   const [showNewProductForm, setShowNewProductForm] = useState(false);
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [newDiscount, setNewDiscount] = useState<Discount>({
-    quantity: 0,
-    rate: 0,
-  });
+  const [newDiscount, setNewDiscount] = useState<Discount>(initialDiscount);
 
-  const initialProduct: Omit<Product, 'id'> = {
-    name: '',
-    price: 0,
-    stock: 0,
-    discounts: [],
-  };
+  const { newProduct, setProductForm, resetProductForm } =
+    useProductForm(initialProduct);
 
-  const { formData, resetData, setData } =
-    useForm<Omit<Product, 'id'>>(initialProduct);
-  const newProduct = formData;
-  const resetProductInfo = resetData;
-  const setProductInfo = setData;
-
-  const handleChange = (key: string, value: any) => {
-    setProductInfo(key, value);
-  };
-  const toggleProductAccordion = (productId: string) => {
-    setOpenProductIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(productId)) {
-        newSet.delete(productId);
-      } else {
-        newSet.add(productId);
-      }
-      return newSet;
-    });
+  const handleChange = (key: keyof Product, value: any) => {
+    setProductForm(key, value);
   };
 
   // handleEditProduct 함수 수정
@@ -98,7 +76,7 @@ export const ProductManager = ({
       };
       onProductUpdate(newProduct);
       setEditingProduct(newProduct);
-      setNewDiscount({ quantity: 0, rate: 0 });
+      setNewDiscount(initialDiscount);
     }
   };
 
@@ -117,7 +95,7 @@ export const ProductManager = ({
   const handleAddNewProduct = () => {
     const productWithId = { ...newProduct, id: Date.now().toString() };
     onProductAdd(productWithId);
-    resetProductInfo();
+    resetProductForm();
     setShowNewProductForm(false);
   };
   return (
