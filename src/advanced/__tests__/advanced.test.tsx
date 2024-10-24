@@ -1,9 +1,30 @@
 import { useState } from 'react';
 import { describe, expect, test } from 'vitest';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  within,
+} from '@testing-library/react';
 import { CartPage } from '../../refactoring/components/cart/CartPage';
 import { AdminPage } from '../../refactoring/components/admin/AdminPage';
-import { Coupon, Product } from '../../types';
+import { CartItem, Coupon, Product } from '../../types';
+import { useCart, useCoupon } from '../../refactoring/hooks';
+import { useCouponForm } from '../../refactoring/hooks/useCouponForm';
+import {
+  initialCoupon,
+  initialProduct,
+} from '../../refactoring/const/initialState';
+import { useAccordion } from '../../refactoring/hooks/useAccordion';
+import { useProductForm } from '../../refactoring/hooks/useProductForm';
+import {
+  calculateTotal,
+  getAppliedDiscount,
+  getMaxDiscount,
+  getRemainingStock,
+} from '../../refactoring/hooks/utils/cartUtils';
 
 const mockProducts: Product[] = [
   {
@@ -259,15 +280,237 @@ describe('advanced > ', () => {
 
       expect($newCoupon).toHaveTextContent('새 쿠폰 (NEW10):10% 할인');
     });
-  });
 
-  describe('자유롭게 작성해보세요.', () => {
-    test('새로운 유틸 함수를 만든 후에 테스트 코드를 작성해서 실행해보세요', () => {
-      expect(true).toBe(false);
+    describe('cartUtils', () => {
+      describe('getMaxDiscount', () => {
+        test('최대 할인율을 계산해야 합니다.', () => {
+          const discounts = [
+            { quantity: 1, rate: 0.1 },
+            { quantity: 2, rate: 0.2 },
+            { quantity: 3, rate: 0.15 },
+          ];
+          const result = getMaxDiscount(discounts);
+          expect(result).toBe(0.2); // 가장 높은 할인율은 0.2
+        });
+        test('최대 할인율을 계산해야 합니다.', () => {
+          const discounts = [
+            { quantity: 1, rate: 0.3 },
+            { quantity: 2, rate: 0.3 },
+            { quantity: 3, rate: 0.2 },
+          ];
+          const result = getMaxDiscount(discounts);
+          expect(result).toBe(0.3);
+        });
+      });
+      describe('getRemainingStock', () => {
+        test('남은 재고 수를 계산해야 합니다.', () => {
+          const product: Product = {
+            id: '1',
+            name: 'Test Product',
+            price: 1000,
+            stock: 10,
+            discounts: [],
+          };
+
+          const cart: CartItem[] = [
+            {
+              product,
+              quantity: 3,
+            },
+          ];
+
+          const result = getRemainingStock(product, cart);
+          expect(result).toBe(7);
+        });
+      });
+      describe('getAppliedDiscount', () => {
+        test('할인을 적용해야 합니다.', () => {
+          const product: Product = {
+            id: '1',
+            name: 'Test Product',
+            price: 1000,
+            stock: 10,
+            discounts: [
+              { quantity: 1, rate: 0.1 }, // 10% 할인
+              { quantity: 2, rate: 0.2 }, // 20% 할인
+              { quantity: 3, rate: 0.15 }, // 15% 할인
+            ],
+          };
+
+          const cartItem: CartItem = {
+            product,
+            quantity: 2,
+          };
+
+          const result = getAppliedDiscount(cartItem);
+          expect(result).toBe(0.2);
+        });
+        test('할인을 적용하지 않아야 합니다.', () => {
+          const product: Product = {
+            id: '1',
+            name: 'Test Product',
+            price: 1000,
+            stock: 10,
+            discounts: [
+              { quantity: 5, rate: 0.25 }, // 25% 할인, 수량이 5 이상이어야 함
+            ],
+          };
+
+          const cartItem: CartItem = {
+            product,
+            quantity: 2,
+          };
+
+          const result = getAppliedDiscount(cartItem);
+          expect(result).toBe(0); // 할인 적용되지 않음
+        });
+      });
+      describe('calculateTotal', () => {
+        test('쿠폰 없이 총액을 올바르게 계산해야 합니다.', () => {
+          const product1: Product = {
+            id: '1',
+            name: 'Product 1',
+            price: 1000,
+            stock: 10,
+            discounts: [],
+          };
+          const product2: Product = {
+            id: '2',
+            name: 'Product 2',
+            price: 2000,
+            stock: 5,
+            discounts: [],
+          };
+
+          const cart: CartItem[] = [
+            { product: product1, quantity: 2 },
+            { product: product2, quantity: 1 },
+          ];
+
+          const result = calculateTotal(cart, null);
+
+          expect(result.totalBeforeDiscount).toBe(4000); // 1000*2 + 2000*1 = 4000
+          expect(result.totalAfterDiscount).toBe(4000); // 할인 없음
+          expect(result.totalDiscount).toBe(0); // 할인 없음
+        });
+        test('쿠폰이 있을 때 총액을 올바르게 계산해야 합니다.', () => {
+          const product: Product = {
+            id: '1',
+            name: 'Product 1',
+            price: 1500,
+            stock: 10,
+            discounts: [],
+          };
+
+          const cart: CartItem[] = [
+            { product, quantity: 3 }, // 1500 * 3 = 4500
+          ];
+
+          const coupon: Coupon = {
+            name: 'Test Coupon',
+            code: 'TEST',
+            discountType: 'amount',
+            discountValue: 1000,
+          }; // 1000원 할인
+
+          const result = calculateTotal(cart, coupon);
+
+          expect(result.totalBeforeDiscount).toBe(4500);
+          expect(result.totalAfterDiscount).toBe(3500); // 4500 - 1000 = 3500
+          expect(result.totalDiscount).toBe(1000); // 할인 총액
+        });
+      });
     });
 
-    test('새로운 hook 함수르 만든 후에 테스트 코드를 작성해서 실행해보세요', () => {
-      expect(true).toBe(false);
+    describe('useCoupon > ', () => {
+      test('쿠폰을 초기화할 수 있다.', () => {
+        const { result } = renderHook(() => useCoupon());
+        expect(result.current.selectedCoupon).toEqual(null);
+      });
+      test('쿠폰을 적용할 수 있다', () => {
+        const { result } = renderHook(() => useCoupon());
+        const newCoupon: Coupon = {
+          name: 'New Coupon',
+          code: 'NEWCODE',
+          discountType: 'amount',
+          discountValue: 5000,
+        };
+
+        act(() => {
+          result.current.applyCoupon(newCoupon);
+        });
+
+        expect(result.current.selectedCoupon).toEqual(newCoupon);
+      });
+    });
+
+    describe('useCouponForm > ', () => {
+      test('쿠폰폼을 초기화할 수 있다.', () => {
+        const { result } = renderHook(() => useCouponForm(initialCoupon));
+        expect(result.current.newCoupon).toEqual(initialCoupon);
+      });
+      test('쿠폰폼을 초기값으로 되돌릴 수 있다', () => {
+        const { result } = renderHook(() => useCouponForm(initialCoupon));
+        act(() => {
+          result.current.resetCouponForm();
+        });
+        expect(result.current.newCoupon).toEqual(initialCoupon);
+      });
+      test('쿠폰폼을 key,value값으로 세팅할 수 있다', () => {
+        const { result } = renderHook(() => useCouponForm(initialCoupon));
+        act(() => {
+          result.current.setCouponForm('name', '쿠폰이름');
+        });
+        expect(result.current.newCoupon).toEqual({
+          name: '쿠폰이름',
+          code: '',
+          discountType: 'percentage',
+          discountValue: 0,
+        });
+      });
+    });
+
+    describe('useProductForm > ', () => {
+      test('쿠폰폼을 초기화할 수 있다.', () => {
+        const { result } = renderHook(() => useProductForm(initialProduct));
+        expect(result.current.newProduct).toEqual(initialProduct);
+      });
+      test('쿠폰폼을 초기값으로 되돌릴 수 있다', () => {
+        const { result } = renderHook(() => useProductForm(initialProduct));
+        act(() => {
+          result.current.resetProductForm();
+        });
+        expect(result.current.newProduct).toEqual(initialProduct);
+      });
+      test('쿠폰폼을 key,value값으로 세팅할 수 있다', () => {
+        const { result } = renderHook(() => useProductForm(initialProduct));
+        act(() => {
+          result.current.setProductForm('name', '쿠폰이름');
+        });
+        expect(result.current.newProduct).toEqual({
+          name: '쿠폰이름',
+          price: 0,
+          stock: 0,
+          discounts: [],
+        });
+      });
+    });
+    describe('useAccordion > ', () => {
+      test('해당하는 productId 아코디언을 열고 닫는다', () => {
+        const { result } = renderHook(() => useAccordion());
+        act(() => {
+          result.current.toggleProductAccordion('p1');
+        });
+        const obj1 = 'p1';
+        const objSet = new Set();
+        objSet.add(obj1);
+        expect(result.current.openProductIds).toEqual(objSet);
+        objSet.delete(obj1);
+        act(() => {
+          result.current.toggleProductAccordion('p1');
+        });
+        expect(result.current.openProductIds).toEqual(objSet);
+      });
     });
   });
 });
